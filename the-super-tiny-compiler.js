@@ -381,9 +381,11 @@
 function tokenizer(input) {
 
   // A `current` variable for tracking our position in the code like a cursor.
+  // 使用current变量来跟踪我们的代码，像一个指针
   let current = 0;
 
   // And a `tokens` array for pushing our tokens to.
+  // 使用tokens来存储我们的字符
   let tokens = [];
 
   // We start by creating a `while` loop where we are setting up our `current`
@@ -396,6 +398,7 @@ function tokenizer(input) {
     // We're also going to store the `current` character in the `input`.
     let char = input[current];
 
+    // 匹配左括号
     // The first thing we want to check for is an open parenthesis. This will
     // later be used for `CallExpression` but for now we only care about the
     // character.
@@ -417,6 +420,7 @@ function tokenizer(input) {
       continue;
     }
 
+    // 匹配右括号
     // Next we're going to check for a closing parenthesis. We do the same exact
     // thing as before: Check for a closing parenthesis, add a new token,
     // increment `current`, and `continue`.
@@ -429,6 +433,7 @@ function tokenizer(input) {
       continue;
     }
 
+    // 匹配空格
     // Moving on, we're now going to check for whitespace. This is interesting
     // because we care that whitespace exists to separate characters, but it
     // isn't actually important for us to store as a token. We would only throw
@@ -442,6 +447,7 @@ function tokenizer(input) {
       continue;
     }
 
+    // 匹配一个多位的数字
     // The next type of token is a number. This is different than what we have
     // seen before because a number could be any number of characters and we
     // want to capture the entire sequence of characters as one token.
@@ -472,7 +478,8 @@ function tokenizer(input) {
       // And we continue on.
       continue;
     }
-
+    
+    // 匹配一个多位的字符串
     // We'll also add support for strings in our language which will be any
     // text surrounded by double quotes (").
     //
@@ -503,6 +510,7 @@ function tokenizer(input) {
       continue;
     }
 
+    // 匹配一个多位的标识符
     // The last type of token will be a `name` token. This is a sequence of
     // letters instead of numbers, that are the names of functions in our lisp
     // syntax.
@@ -547,6 +555,7 @@ function tokenizer(input) {
 /**
  * For our parser we're going to take our array of tokens and turn it into an
  * AST.
+ * 将我们的tokens数组转换为AST
  *
  *   [{ type: 'paren', value: '(' }, ...]   =>   { type: 'Program', body: [...] }
  */
@@ -598,7 +607,7 @@ function parser(tokens) {
       token.type === 'paren' &&
       token.value === '('
     ) {
-
+      // 如果是左括号，我们跳过它，不需要出现在AST中，获取下一个token值，是一个函数名
       // We'll increment `current` to skip the parenthesis since we don't care
       // about it in our AST.
       token = tokens[++current];
@@ -649,31 +658,37 @@ function parser(tokens) {
       // So we create a `while` loop that will continue until it encounters a
       // token with a `type` of `'paren'` and a `value` of a closing
       // parenthesis.
+      // 当遇到括号或者右括号时，退出循环
       while (
         (token.type !== 'paren') ||
         (token.type === 'paren' && token.value !== ')')
       ) {
         // we'll call the `walk` function which will return a `node` and we'll
         // push it into our `node.params`.
+        // 递归调用walk，会把该运算的参数加到params中
         node.params.push(walk());
         token = tokens[current];
       }
 
       // Finally we will increment `current` one last time to skip the closing
       // parenthesis.
+      // 最后跳过右括号
       current++;
 
       // And return the node.
+      // 返回这个结点
       return node;
     }
 
     // Again, if we haven't recognized the token type by now we're going to
     // throw an error.
+    // 如果没有识别到token类型，则抛出错误
     throw new TypeError(token.type);
   }
 
   // Now, we're going to create our AST which will have a root which is a
   // `Program` node.
+  // 创建AST根节点
   let ast = {
     type: 'Program',
     body: [],
@@ -688,6 +703,7 @@ function parser(tokens) {
   //   (add 2 2)
   //   (subtract 4 2)
   //
+  // 把语句逐个加入到ast中
   while (current < tokens.length) {
     ast.body.push(walk());
   }
@@ -708,6 +724,8 @@ function parser(tokens) {
  * a visitor. We need to be able to call the methods on the visitor whenever we
  * encounter a node with a matching type.
  *
+ * 这个时候，我们有了AST树，我们有能能力访问不同的节点，我们需要在匹配到结点类型的任何时候能够调用visitor的方法
+ * 
  *   traverse(ast, {
  *     Program: {
  *       enter(node, parent) {
@@ -740,10 +758,12 @@ function parser(tokens) {
 
 // So we define a traverser function which accepts an AST and a
 // visitor. Inside we're going to define two functions...
+// 我们定义一个traverser函数，接受一个AST树和一个visitor
 function traverser(ast, visitor) {
 
   // A `traverseArray` function that will allow us to iterate over an array and
   // call the next function that we will define: `traverseNode`.
+  // 遍历数组，对每个结点调用traverseNode
   function traverseArray(array, parent) {
     array.forEach(child => {
       traverseNode(child, parent);
@@ -756,6 +776,7 @@ function traverser(ast, visitor) {
 
     // We start by testing for the existence of a method on the visitor with a
     // matching `type`.
+    // 我们通过匹配type来获取方法
     let methods = visitor[node.type];
 
     // If there is an `enter` method for this node type we'll call it with the
@@ -765,6 +786,7 @@ function traverser(ast, visitor) {
     }
 
     // Next we are going to split things up by the current node type.
+    // 接下来我们通过当前结点的类型来区分执行的流程
     switch (node.type) {
 
       // We'll start with our top level `Program`. Since Program nodes have a
@@ -882,6 +904,7 @@ function transformer(ast) {
       enter(node, parent) {
         // We'll create a new node also named `NumberLiteral` that we will push to
         // the parent context.
+        // 我们创建一个新的结点，并将其push到父结点的context中
         parent._context.push({
           type: 'NumberLiteral',
           value: node.value,
@@ -916,11 +939,13 @@ function transformer(ast) {
 
         // Next we're going to define a new context on the original
         // `CallExpression` node that will reference the `expression`'s arguments
-        // so that we can push arguments.
+        // so that CallExpression we can push arguments.
+        // 调用表达式类型需要接受表达式参数，所以我们可以在进入调用表达式时创建一个新的context
         node._context = expression.arguments;
 
         // Then we're going to check if the parent node is a `CallExpression`.
         // If it is not...
+        // 如果父结点不是一个调用表达式，那么是一个语句
         if (parent.type !== 'CallExpression') {
 
           // We're going to wrap our `CallExpression` node with an
@@ -956,6 +981,7 @@ function transformer(ast) {
  *
  * Our code generator is going to recursively call itself to print each node in
  * the tree into one giant string.
+ * 我们的代码生成器，递归调用自身来打印每个树的每个结点，把树串成线
  */
 
 function codeGenerator(node) {
@@ -981,6 +1007,7 @@ function codeGenerator(node) {
     // parenthesis, we'll map through each node in the `arguments` array and run
     // them through the code generator, joining them with a comma, and then
     // we'll add a closing parenthesis.
+    // callee:函数名，arguments：参数列表
     case 'CallExpression':
       return (
         codeGenerator(node.callee) +
